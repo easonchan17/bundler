@@ -49,7 +49,10 @@ export class ValidationManager {
 
   // standard eth_call to simulateValidation
   async _callSimulateValidation (userOp: UserOperation): Promise<ValidationResult> {
+    console.log('#ValidationManager: _callSimulateValidation - call entryPoint.simulateValidation')
     const errorResult = await this.entryPoint.callStatic.simulateValidation(userOp, { gasLimit: 10e6 }).catch(e => e)
+    console.log('#ValidationManager - entryPoint.simulateValidation returned error name', errorResult.errorName)
+    
     return this._parseErrorResult(userOp, errorResult)
   }
 
@@ -63,6 +66,7 @@ export class ValidationManager {
       }
       // eslint-disable-next-line
       const msg: string = errorResult.errorArgs?.reason ?? errorResult.toString()
+      console.log('#ValidationManager - _parseErrorResult msg', msg)
 
       if (paymaster == null) {
         throw new RpcError(`account validation failed: ${msg}`, ValidationErrors.SimulateValidation)
@@ -136,6 +140,8 @@ export class ValidationManager {
         errorName,
         errorArgs
       })
+
+      console.log(`#ValidationManager: _geth_traceCall_SimulateValidation - debug_traceCall errorName ${errorName}`)
       if (!errorName.includes('Result')) {
         // a real error, not a result.
         throw new Error(errFullName)
@@ -179,8 +185,10 @@ export class ValidationManager {
     }
     let storageMap: StorageMap = {}
     if (!this.unsafe) {
+      console.log('#ValidationManager: validateUserOp - safe mode to call _geth_traceCall_SimulateValidation', userOp)
       let tracerResult: BundlerCollectorReturn
       [res, tracerResult] = await this._geth_traceCall_SimulateValidation(userOp)
+
       let contractAddresses: string[]
       [contractAddresses, storageMap] = parseScannerResult(userOp, tracerResult, res, this.entryPoint)
       // if no previous contract hashes, then calculate hashes of contracts
@@ -192,9 +200,11 @@ export class ValidationManager {
       }
     } else {
       // NOTE: this mode doesn't do any opcode checking and no stake checking!
+      console.log('#ValidationManager: validateUserOp - unsafe to call _callSimulateValidation', userOp)
       res = await this._callSimulateValidation(userOp)
     }
 
+    console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data ...')
     requireCond(!res.returnInfo.sigFailed,
       'Invalid UserOp signature or paymaster signature',
       ValidationErrors.InvalidSignature)
@@ -211,6 +221,7 @@ export class ValidationManager {
       'Currently not supporting aggregator',
       ValidationErrors.UnsupportedSignatureAggregator)
 
+    console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data passed')
     return {
       ...res,
       referencedContracts: codeHashes,

@@ -100,6 +100,7 @@ export class SimpleAccountAPI extends BaseAccountAPI {
   }
 
   async signUserOpHash (userOpHash: string): Promise<string> {
+    console.log('#SimpleAccountAPI: signUserOpHash', userOpHash)
     return await this.owner.signMessage(arrayify(userOpHash))
   }
 }

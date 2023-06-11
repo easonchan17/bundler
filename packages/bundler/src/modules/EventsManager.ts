@@ -44,6 +44,7 @@ export class EventsManager {
   }
 
   handleEvent (ev: UserOperationEventEvent | AccountDeployedEvent | SignatureAggregatorChangedEvent): void {
+    // console.log('#EventsManager - handleEvent', ev.event)
     switch (ev.event) {
       case 'UserOperationEvent':
         this.handleUserOperationEvent(ev as any)

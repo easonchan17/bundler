@@ -13,6 +13,8 @@ import { getAddr } from './modules/moduleUtils'
 import { UserOperationByHashResponse, UserOperationReceipt } from './RpcTypes'
 import { ExecutionErrors, UserOperation, ValidationErrors } from './modules/Types'
 
+const {toChecksumAddress} = require('ethereumjs-util')
+
 const HEX_REGEX = /^0x[a-fA-F\d]*$/i
 
 /**
@@ -108,6 +110,7 @@ export class UserOpMethodHandler {
       verificationGasLimit: 10e6
     }
 
+    console.log('#UserOpMethodHandler: call estimateUserOperationGas', userOp1)
     // todo: checks the existence of parameters, but since we hexlify the inputs, it fails to validate
     await this._validateParameters(deepHexlify(userOp), entryPointInput)
     // todo: validation manager duplicate?
@@ -158,7 +161,7 @@ export class UserOpMethodHandler {
     await this._validateParameters(userOp1, entryPointInput)
 
     const userOp = await resolveProperties(userOp1)
-
+    console.log('#UserOpMethodHandler: receive a userOp')
     console.log(`UserOperation: Sender=${userOp.sender}  Nonce=${tostr(userOp.nonce)} EntryPoint=${entryPointInput} Paymaster=${getAddr(
       userOp.paymasterAndData)}`)
     await this.execManager.sendUserOperation(userOp, entryPointInput)
@@ -210,7 +213,9 @@ export class UserOpMethodHandler {
       return null
     }
     const tx = await event.getTransaction()
-    if (tx.to !== this.entryPoint.address) {
+    if (tx.to !== this.entryPoint.address
+      && tx.to !== toChecksumAddress(this.entryPoint.address)) {
+      console.log('#UserOpMethodHandler: getUserOperationByHash tx.to=', tx.to, 'entryPoint.address=', this.entryPoint.address)
       throw new Error('unable to parse transaction')
     }
     const parsed = this.entryPoint.interface.parseTransaction(tx)
@@ -263,8 +268,11 @@ export class UserOpMethodHandler {
 
   async getUserOperationReceipt (userOpHash: string): Promise<UserOperationReceipt | null> {
     requireCond(userOpHash?.toString()?.match(HEX_REGEX) != null, 'Missing/invalid userOpHash', -32601)
+    
+    console.log('#UserOpMethodHandler: getUserOperationReceipt userOpHash', userOpHash)
     const event = await this._getUserOperationEvent(userOpHash)
     if (event == null) {
+      console.log('#UserOpMethodHandler: getUserOperationReceipt - _getUserOperationEvent got null')
       return null
     }
     const receipt = await event.getTransactionReceipt()

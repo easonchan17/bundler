@@ -16,8 +16,20 @@ import { DeterministicDeployer, HttpRpcClient, SimpleAccountAPI } from '@account
 import { runBundler } from '../runBundler'
 import { BundlerServer } from '../BundlerServer'
 import { getNetworkProvider } from '../Config'
+import * as readline from 'readline'
 
 const ENTRY_POINT = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+
+// during testing, it is necessary to replace the configuration data with your own, 
+// which should match the hre.network.config.deterministicDeploymentProxy configuration
+const DeterministicDeploymentProxy = {
+  "gasPrice": 100000000000,
+  "gasLimit": 100000,
+  "signerAddress": "1e440618d32b94d7bc8ecf9c658174ac18b21026",
+  "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dda08bcfb8460e3ce571e322939399c9f3f0026d19336a6172f36c68da1d8dc8420ea00d0aefe6e2748e13977e2bf65ff4858bafb8958610c4c108647c7fab4b76b433",
+  "address": "6024784e42f669ced84a868647836ea94a4dc56c",
+  "chainId": 1117
+}
 
 class Runner {
   bundlerProvider!: HttpRpcClient
@@ -47,14 +59,17 @@ class Runner {
   async init (deploymentSigner?: Signer): Promise<this> {
     const net = await this.provider.getNetwork()
     const chainId = net.chainId
+    DeterministicDeployer.overwriteDDPConfig(DeterministicDeploymentProxy)
     const dep = new DeterministicDeployer(this.provider)
     const accountDeployer = await DeterministicDeployer.getAddress(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
+    console.log('accountDeployer address is ', accountDeployer)
     // const accountDeployer = await new SimpleAccountFactory__factory(this.provider.getSigner()).deploy().then(d=>d.address)
     if (!await dep.isContractDeployed(accountDeployer)) {
       if (deploymentSigner == null) {
         console.log(`AccountDeployer not deployed at ${accountDeployer}. run with --deployFactory`)
         process.exit(1)
       }
+      DeterministicDeployer.printDDPConfig()
       const dep1 = new DeterministicDeployer(deploymentSigner.provider as any, deploymentSigner)
       await dep1.deterministicDeploy(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
     }
@@ -88,14 +103,33 @@ class Runner {
       target,
       data
     })
+
+    console.log('#Runner: runUserOp createSignedUserOp', userOp)
+
     try {
+      console.log('#Runner: runUserOp sendUserOpToBundler')
       const userOpHash = await this.bundlerProvider.sendUserOpToBundler(userOp)
+      console.log('#Runner: runUserOp getUserOpReceipt, userOpHash=', userOpHash)
       const txid = await this.accountApi.getUserOpReceipt(userOpHash)
       console.log('reqId', userOpHash, 'txid=', txid)
     } catch (e: any) {
       throw this.parseExpectedGas(e)
     }
   }
+}
+
+function waitForInput( message:string ) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  return new Promise<string>((resolve) => {
+    rl.question(message, (input) => {
+      rl.close()
+      resolve(input)
+    })
+  })
 }
 
 async function main (): Promise<void> {
@@ -138,6 +172,7 @@ async function main (): Promise<void> {
     await bundler.asyncStart()
   }
   if (opts.mnemonic != null) {
+    console.log('mnemonic is not null')
     signer = Wallet.fromMnemonic(fs.readFileSync(opts.mnemonic, 'ascii').trim()).connect(provider)
   } else {
     try {
@@ -153,10 +188,13 @@ async function main (): Promise<void> {
       throw new Error('must specify --mnemonic')
     }
   }
-  const accountOwner = new Wallet('0x'.padEnd(66, '7'))
+
+  // const accountOwner = new Wallet('0x'.padEnd(66, '7'))
+  const key = await waitForInput("Enter the private key of the wallet signer account that used only as signer (not as transaction sender), private key is:" )
+  const accountOwner = new Wallet(key)
 
   const index = opts.nonce ?? Date.now()
-  console.log('using account index=', index)
+  console.log('using account index=', index, 'accountOwner address=', await accountOwner.getAddress(), 'signer address=', await signer.getAddress())
   const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index).init(deployFactory ? signer : undefined)
 
   const addr = await client.getAddress()
@@ -171,6 +209,7 @@ async function main (): Promise<void> {
 
   const bal = await getBalance(addr)
   console.log('account address', addr, 'deployed=', await isDeployed(addr), 'bal=', formatEther(bal))
+
   const gasPrice = await provider.getGasPrice()
   // TODO: actual required val
   const requiredBalance = gasPrice.mul(2e6)

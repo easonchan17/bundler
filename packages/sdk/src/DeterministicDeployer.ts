@@ -35,11 +35,41 @@ export class DeterministicDeployer {
   }
 
   // from: https://github.com/Arachnid/deterministic-deployment-proxy
+  static isInitDDPConfig = false
   static proxyAddress = '0x4e59b44847b379578588920ca78fbf26c0b4956c'
   static deploymentTransaction = '0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222'
   static deploymentSignerAddress = '0x3fab184622dc19b6109349b94811493bf2a45362'
   static deploymentGasPrice = 100e9
   static deploymentGasLimit = 100000
+  static deploymentChainId = 1337
+
+  static overwriteDDPConfig( config: any ) {
+    DeterministicDeployer.proxyAddress = '0x'+ config.address
+    DeterministicDeployer.deploymentTransaction = '0x' + config.transaction
+    DeterministicDeployer.deploymentSignerAddress = '0x' + config.signerAddress
+    DeterministicDeployer.deploymentGasPrice = config.gasPrice 
+    DeterministicDeployer.deploymentGasLimit = config.gasLimit
+    DeterministicDeployer.deploymentChainId = config.chainId
+
+    DeterministicDeployer.isInitDDPConfig = true
+  }
+
+  static checkDDPConfigInited() {
+    if ( !DeterministicDeployer.isInitDDPConfig ) {
+      throw new Error('Deterministic deployment proxy config is not inited!!!')
+    }  
+  }
+
+  static printDDPConfig() {
+    console.log('checkDDPConfig', {
+      proxyAddress: DeterministicDeployer.proxyAddress,
+      deploymentTransaction: DeterministicDeployer.deploymentTransaction,
+      deploymentSignerAddress: DeterministicDeployer.deploymentSignerAddress,
+      deploymentGasPrice: DeterministicDeployer.deploymentGasPrice,
+      deploymentGasLimit: DeterministicDeployer.deploymentGasLimit,
+      deploymentChainId: DeterministicDeployer.deploymentChainId
+    })
+  }
 
   constructor (
     readonly provider: JsonRpcProvider,

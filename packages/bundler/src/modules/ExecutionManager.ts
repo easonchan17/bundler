@@ -34,15 +34,20 @@ export class ExecutionManager {
   async sendUserOperation (userOp: UserOperation, entryPointInput: string): Promise<void> {
     await this.mutex.runExclusive(async () => {
       debug('sendUserOperation')
+      console.log('#ExecutionManager: sendUserOperation - validateInputParameters')
       this.validationManager.validateInputParameters(userOp, entryPointInput)
+      console.log('#ExecutionManager: sendUserOperation - validationUserOp')
       const validationResult = await this.validationManager.validateUserOp(userOp, undefined)
+      console.log('#ExecutionManager: sendUserOperation - getUserOpHash')
       const userOpHash = await this.validationManager.entryPoint.getUserOpHash(userOp)
+      console.log('#ExecutionManager: sendUserOperation - addUserOp')
       this.mempoolManager.addUserOp(userOp,
         userOpHash,
         validationResult.returnInfo.prefund,
         validationResult.senderInfo,
         validationResult.referencedContracts,
         validationResult.aggregatorInfo?.addr)
+      console.log('#ExecutionManager: sendUserOperation - attemptBundle')
       await this.attemptBundle(false)
     })
   }

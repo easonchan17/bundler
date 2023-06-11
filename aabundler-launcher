@@ -2,10 +2,10 @@
 # launch bundler: also start geth, and deploy entrypoint.
 cd `dirname $0`
 
-GETH=geth
-GETHPORT=8545
-BUNDLERPORT=3000
-GETHPID=/tmp/aabundler.geth.pid
+# GETH=geth
+GETHPORT=8579
+BUNDLERPORT=6000
+# GETHPID=/tmp/aabundler.geth.pid
 BUNDLERPID=/tmp/aabundler.node.pid
 VERSION="aabundler-js-0.1"
 
@@ -32,34 +32,34 @@ function waitForPort {
 
 function startBundler {
 
-isPortFree $GETHPORT || fatal port $GETHPORT not free
+# isPortFree $GETHPORT || fatal port $GETHPORT not free
 isPortFree $BUNDLERPORT || fatal port $BUNDLERPORT not free
 
-echo == starting geth 1>&2
-$GETH version | grep ^Version: 1>&2
+# echo == starting geth 1>&2
+# $GETH version | grep ^Version: 1>&2
 
-$GETH --dev --http.port $GETHPORT \
-        --http.api personal,eth,net,web3,debug \
-        --ignore-legacy-receipts \
-        --http \
-        --http.addr "0.0.0.0" \
-        --rpc.allow-unprotected-txs \
-        --allow-insecure-unlock \
-        --verbosity 1  & echo $! > $GETHPID
+# $GETH --dev --http.port $GETHPORT \
+#         --http.api personal,eth,net,web3,debug \
+#         --ignore-legacy-receipts \
+#         --http \
+#         --http.addr "0.0.0.0" \
+#         --rpc.allow-unprotected-txs \
+#         --allow-insecure-unlock \
+#         --verbosity 1  & echo $! > $GETHPID
 
-waitForPort $GETHPORT
+# waitForPort $GETHPORT
 
 cd packages/bundler
 echo == Deploying entrypoint 1>&2
 export TS_NODE_TRANSPILE_ONLY=1
-npx hardhat deploy --network localhost
+npx hardhat deploy --network coreLocalhost
 echo == Starting bundler 1>&2
 ts-node -T ./src/exec.ts --config ./localconfig/bundler.config.json --port $BUNDLERPORT --network http://localhost:$GETHPORT  & echo $! > $BUNDLERPID
 waitForPort $BUNDLERPORT
 }
 
 function start {
-  isPortFree $GETPORTPORT || fatal port $GETHPORT not free
+  # isPortFree $GETPORTPORT || fatal port $GETHPORT not free
   isPortFree $BUNDLERPORT || fatal port $BUNDLERPORT not free
   startBundler > $BUNDLERLOG
   echo == Bundler, Geth started. log to $BUNDLERLOG
@@ -68,9 +68,11 @@ function start {
 function stop {
   echo == stopping bundler
   test -r $BUNDLERPID && kill -9 `cat $BUNDLERPID`
-  test -r $GETHPID && kill -9 `cat $GETHPID`
-  rm $BUNDLERPID $GETHPID
-  echo == bundler, geth stopped
+  # test -r $GETHPID && kill -9 `cat $GETHPID`
+  # rm $BUNDLERPID $GETHPID
+  # echo == bundler, geth stopped
+  rm $BUNDLERPID
+  echo == bundler stopped
 }
 
 function jsoncurl {

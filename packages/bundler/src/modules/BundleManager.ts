@@ -78,15 +78,29 @@ export class BundleManager {
   async sendBundle (userOps: UserOperation[], beneficiary: string, storageMap: StorageMap): Promise<SendBundleReturn | undefined> {
     try {
       const feeData = await this.provider.getFeeData()
+      const minGasPrice = await this.provider.getGasPrice()
+
+      let maxFeePerGas: BigNumber = BigNumber.from(0)
+      let maxPriorityFeePerGas: BigNumber = BigNumber.from(0)
+      if ( feeData.maxFeePerGas != null ) {
+        maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+      }
+
+      if ( feeData.maxPriorityFeePerGas != null ) {
+          maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+      }
+
       const tx = await this.entryPoint.populateTransaction.handleOps(userOps, beneficiary, {
         type: 2,
         nonce: await this.signer.getTransactionCount(),
         gasLimit: 10e6,
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ?? 0,
-        maxFeePerGas: feeData.maxFeePerGas ?? 0
+        maxPriorityFeePerGas: maxPriorityFeePerGas,
+        maxFeePerGas: maxFeePerGas
       })
       tx.chainId = this.provider._network.chainId
+      console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps', tx)
       const signedTx = await this.signer.signTransaction(tx)
+      console.log('#BundleManager sendBundle - sign tx')
       let ret: string
       if (this.conditionalRpc) {
         debug('eth_sendRawTransactionConditional', storageMap)
@@ -97,6 +111,7 @@ export class BundleManager {
       } else {
         // ret = await this.signer.sendTransaction(tx)
         ret = await this.provider.send('eth_sendRawTransaction', [signedTx])
+        console.log('#BundleManager sendBundle - send signed tx, tx hash=', ret)
         debug('eth_sendRawTransaction ret=', ret)
       }
       // TODO: parse ret, and revert if needed.
@@ -104,6 +119,7 @@ export class BundleManager {
       debug('sent handleOps with', userOps.length, 'ops. removing from mempool')
       // hashes are needed for debug rpc only.
       const hashes = await this.getUserOpHashes(userOps)
+      console.log('#BundleManager sendBundle - finish send signed tx and get hash of userOps', hashes)
       return {
         transactionHash: ret,
         userOpHashes: hashes
@@ -123,6 +139,7 @@ export class BundleManager {
       } = parsedError.args
       const userOp = userOps[opIndex]
       const reasonStr: string = reason.toString()
+      console.log('#reasonStr', reasonStr)
       if (reasonStr.startsWith('AA3')) {
         this.reputationManager.crashedHandleOps(getAddr(userOp.paymasterAndData))
       } else if (reasonStr.startsWith('AA2')) {

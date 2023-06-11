@@ -196,7 +196,9 @@ export abstract class BaseAccountAPI {
    * @param userOp userOperation, (signature field ignored)
    */
   async getUserOpHash (userOp: UserOperationStruct): Promise<string> {
+    console.log('#BaseAccountAPI: getUserOpHash resolve userOp Properties')
     const op = await resolveProperties(userOp)
+    console.log('#BaseAccountAPI: getUserOpHash resolve userOp Properties passed')
     const chainId = await this.provider.getNetwork().then(net => net.chainId)
     return getUserOpHash(op, this.entryPointAddress, chainId)
   }
@@ -246,11 +248,18 @@ export abstract class BaseAccountAPI {
     } = info
     if (maxFeePerGas == null || maxPriorityFeePerGas == null) {
       const feeData = await this.provider.getFeeData()
+      const minGasPrice = await this.provider.getGasPrice()
+      console.log('#BaseAccountAPI: createUnsignedUserOp feeData=', feeData)
+
       if (maxFeePerGas == null) {
-        maxFeePerGas = feeData.maxFeePerGas ?? undefined
+        if ( feeData.maxFeePerGas != null ) {
+          maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+        }
       }
       if (maxPriorityFeePerGas == null) {
-        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined
+        if ( feeData.maxPriorityFeePerGas != null ) {
+           maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+        }
       }
     }
 
@@ -276,6 +285,9 @@ export abstract class BaseAccountAPI {
       paymasterAndData = await this.paymasterAPI.getPaymasterAndData(userOpForPm)
     }
     partialUserOp.paymasterAndData = paymasterAndData ?? '0x'
+
+    console.log('#BaseAccountAPI: createUnsignedUserOp partialUserOp', partialUserOp)
+
     return {
       ...partialUserOp,
       preVerificationGas: this.getPreVerificationGas(partialUserOp),

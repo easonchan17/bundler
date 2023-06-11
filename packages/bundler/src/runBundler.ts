@@ -98,6 +98,7 @@ export async function runBundler (argv: string[], overrideExit = true): Promise<
   } = await provider.getNetwork()
 
   if (chainId === 31337 || chainId === 1337) {
+    DeterministicDeployer.checkDDPConfigInited()
     await new DeterministicDeployer(provider as any).deterministicDeploy(EntryPoint__factory.bytecode)
     if ((await wallet.getBalance()).eq(0)) {
       console.log('=== testnet: fund signer')
@@ -115,6 +116,8 @@ export async function runBundler (argv: string[], overrideExit = true): Promise<
     process.exit(1)
   }
 
+  console.log('#runBundler: connecting to entryPoint', config.entryPoint)
+
   const {
     entryPoint
   } = await connectContracts(wallet, config.entryPoint)
@@ -129,6 +132,7 @@ export async function runBundler (argv: string[], overrideExit = true): Promise<
     execManagerConfig.autoBundleInterval = 0
   }
 
+  console.log('#entryPoint.signer', entryPoint.signer.getAddress())
   const [execManager, eventsManager, reputationManager, mempoolManager] = initServer(execManagerConfig, entryPoint.signer)
   const methodHandler = new UserOpMethodHandler(
     execManager,

@@ -25,6 +25,7 @@ export async function wrapProvider (
 ): Promise<ERC4337EthersProvider> {
   const entryPoint = EntryPoint__factory.connect(config.entryPointAddress, originalProvider)
   // Initial SimpleAccount instance is not deployed and exists just for the interface
+  DeterministicDeployer.checkDDPConfigInited()
   const detDeployer = new DeterministicDeployer(originalProvider)
   const SimpleAccountFactory = await detDeployer.deterministicDeploy(new SimpleAccountFactory__factory(), 0, [entryPoint.address])
   const smartAccountAPI = new SimpleAccountAPI({
