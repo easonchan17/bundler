@@ -251,16 +251,21 @@ export abstract class BaseAccountAPI {
       const minGasPrice = await this.provider.getGasPrice()
       console.log('#BaseAccountAPI: createUnsignedUserOp feeData=', feeData)
 
+      // TODO ??? need review
       if (maxFeePerGas == null) {
         if ( feeData.maxFeePerGas != null ) {
           maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+        } else {
+          maxFeePerGas = minGasPrice
         }
       }
       if (maxPriorityFeePerGas == null) {
         if ( feeData.maxPriorityFeePerGas != null ) {
            maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+        }else {
+          maxPriorityFeePerGas = minGasPrice
         }
-      }
+      } 
     }
 
     const partialUserOp: any = {

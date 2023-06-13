@@ -80,22 +80,28 @@ export class BundleManager {
       const feeData = await this.provider.getFeeData()
       const minGasPrice = await this.provider.getGasPrice()
 
+      // TODO ??? need review
       let maxFeePerGas: BigNumber = BigNumber.from(0)
       let maxPriorityFeePerGas: BigNumber = BigNumber.from(0)
       if ( feeData.maxFeePerGas != null ) {
         maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+      } else {
+        maxFeePerGas = minGasPrice
       }
 
       if ( feeData.maxPriorityFeePerGas != null ) {
-          maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+      } else {
+        maxPriorityFeePerGas = minGasPrice
       }
 
       const tx = await this.entryPoint.populateTransaction.handleOps(userOps, beneficiary, {
-        type: 2,
+        type: 0,
         nonce: await this.signer.getTransactionCount(),
         gasLimit: 10e6,
-        maxPriorityFeePerGas: maxPriorityFeePerGas,
-        maxFeePerGas: maxFeePerGas
+        gasPrice: minGasPrice.lt(maxPriorityFeePerGas) ? maxPriorityFeePerGas : minGasPrice
+        // maxPriorityFeePerGas: maxPriorityFeePerGas,
+        // maxFeePerGas: maxFeePerGas
       })
       tx.chainId = this.provider._network.chainId
       console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps', tx)
