@@ -32,6 +32,7 @@ export async function connectContracts (
   wallet: Wallet,
   entryPointAddress: string): Promise<{ entryPoint: EntryPoint }> {
   const entryPoint = EntryPoint__factory.connect(entryPointAddress, wallet)
+  console.log('#runBundler: wallet connected to entryPoint')
   return {
     entryPoint
   }
@@ -116,8 +117,6 @@ export async function runBundler (argv: string[], overrideExit = true): Promise<
     process.exit(1)
   }
 
-  console.log('#runBundler: connecting to entryPoint', config.entryPoint)
-
   const {
     entryPoint
   } = await connectContracts(wallet, config.entryPoint)
@@ -132,7 +131,7 @@ export async function runBundler (argv: string[], overrideExit = true): Promise<
     execManagerConfig.autoBundleInterval = 0
   }
 
-  console.log('#entryPoint.signer', entryPoint.signer.getAddress())
+  console.log('#entryPoint.signer', await entryPoint.signer.getAddress())
   const [execManager, eventsManager, reputationManager, mempoolManager] = initServer(execManagerConfig, entryPoint.signer)
   const methodHandler = new UserOpMethodHandler(
     execManager,

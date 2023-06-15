@@ -291,7 +291,7 @@ export abstract class BaseAccountAPI {
     }
     partialUserOp.paymasterAndData = paymasterAndData ?? '0x'
 
-    console.log('#BaseAccountAPI: createUnsignedUserOp partialUserOp', partialUserOp)
+    console.log('#BaseAccountAPI: createUnsignedUserOp partialUserOp')
 
     return {
       ...partialUserOp,

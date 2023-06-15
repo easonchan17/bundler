@@ -185,7 +185,7 @@ export class ValidationManager {
     }
     let storageMap: StorageMap = {}
     if (!this.unsafe) {
-      console.log('#ValidationManager: validateUserOp - safe mode to call _geth_traceCall_SimulateValidation', userOp)
+      console.log('#ValidationManager: validateUserOp - safe mode to call _geth_traceCall_SimulateValidation')
       let tracerResult: BundlerCollectorReturn
       [res, tracerResult] = await this._geth_traceCall_SimulateValidation(userOp)
 

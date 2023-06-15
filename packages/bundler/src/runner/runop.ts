@@ -25,9 +25,9 @@ const ENTRY_POINT = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
 const DeterministicDeploymentProxy = {
   "gasPrice": 100000000000,
   "gasLimit": 100000,
-  "signerAddress": "0c6d4bb31013a509ce8b8e870c2817a55df12432",
-  "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dda065f08bf25009836c2897f503a3f328abd9404235ae41d4d34ff76ff837e0545ea0396f0e8f1e1779e772795d1c19cacd5a0e2607e0a60b68843022055f25b8310c",
-  "address": "cdc0c009ca4b7ef63f19f8fcf3bc6201d4b46cc2",
+  "signerAddress": "b7257e293ff8982d7b760497fbdaf5fbca490cbd",
+  "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dea08de66477037a290d361927b2fe0237a46288dc09ec63032d8ea18e3fc3a62032a00998fef1a6856cc634307b7cdbe9953ccd66cf901cc169f62914e030eb35c8ed",
+  "address": "eaacc182e826f7fa9cf25fd2325056d3dfdce69c",
   "chainId": 1117
 }
 
@@ -57,21 +57,28 @@ class Runner {
   }
 
   async init (deploymentSigner?: Signer): Promise<this> {
+    console.log('#Runner: init')
     const net = await this.provider.getNetwork()
     const chainId = net.chainId
     DeterministicDeployer.overwriteDDPConfig(DeterministicDeploymentProxy)
     const dep = new DeterministicDeployer(this.provider)
     const accountDeployer = await DeterministicDeployer.getAddress(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
-    console.log('accountDeployer address is ', accountDeployer)
+    console.log('#Runner: init - SimpleAccountFactory address is ', accountDeployer)
     // const accountDeployer = await new SimpleAccountFactory__factory(this.provider.getSigner()).deploy().then(d=>d.address)
     if (!await dep.isContractDeployed(accountDeployer)) {
       if (deploymentSigner == null) {
         console.log(`AccountDeployer not deployed at ${accountDeployer}. run with --deployFactory`)
         process.exit(1)
       }
-      DeterministicDeployer.printDDPConfig()
+      DeterministicDeployer.checkDDPConfigInited()
       const dep1 = new DeterministicDeployer(deploymentSigner.provider as any, deploymentSigner)
+      console.log('#Runner: init - SimpleAccountFactory deploying')
       await dep1.deterministicDeploy(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
+      
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      console.log('#Runner: init - SimpleAccountFactory deployed')
+    } else {
+      console.log('#Runner: init - SimpleAccountFactory deployed')
     }
     this.bundlerProvider = new HttpRpcClient(this.bundlerUrl, this.entryPointAddress, chainId)
     this.accountApi = new SimpleAccountAPI({
@@ -84,6 +91,8 @@ class Runner {
         // perUserOp: 100000
       }
     })
+
+    console.log('#Runner: inited')
     return this
   }
 
@@ -158,7 +167,7 @@ async function main (): Promise<void> {
     await bundler.asyncStart()
   }
   if (opts.mnemonic != null) {
-    console.log('mnemonic is not null')
+    console.log('mnemonic file is', opts.mnemonic)
     signer = Wallet.fromMnemonic(fs.readFileSync(opts.mnemonic, 'ascii').trim()).connect(provider)
   } else {
     try {
@@ -175,9 +184,12 @@ async function main (): Promise<void> {
     }
   }
 
+  const signerBal = await getBalance(await signer.getAddress())
+  console.log( '#Runner: signer balance is ', signerBal )
+
   const accountOwner = new Wallet('0x'.padEnd(66, '7'))
   const index = opts.nonce ?? Date.now()
-  console.log('using account index=', index, 'accountOwner address=', await accountOwner.getAddress(), 'signer address=', await signer.getAddress())
+  console.log('#using account index=', index, 'accountOwner address=', await accountOwner.getAddress(), 'signer address=', await signer.getAddress())
   const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index).init(deployFactory ? signer : undefined)
 
   const addr = await client.getAddress()
@@ -196,6 +208,7 @@ async function main (): Promise<void> {
   const gasPrice = await provider.getGasPrice()
   // TODO: actual required val
   const requiredBalance = gasPrice.mul(2e6)
+  console.log('#Runner: requiredBalance is', requiredBalance)
   if (bal.lt(requiredBalance.div(2))) {
     console.log('funding account to', requiredBalance.toString())
     await signer.sendTransaction({
@@ -206,14 +219,19 @@ async function main (): Promise<void> {
     console.log('not funding account. balance is enough')
   }
 
+  const addBal = await getBalance(addr)
   const dest = addr
   const data = keccak256(Buffer.from('entryPoint()')).slice(0, 10)
   console.log('data=', data)
   await client.runUserOp(dest, data)
   console.log('after run1')
+  const addBal2 = await getBalance(addr)
+  console.log('#Runner: run first userOp cost', addBal.sub(addBal2).toString())
   // client.accountApi.overheads!.perUserOp = 30000
   await client.runUserOp(dest, data)
   console.log('after run2')
+  const addBal3 = await getBalance(addr)
+  console.log('#Runner: run second userOp cost', addBal2.sub(addBal3).toString())
   await bundler?.stop()
 }
 

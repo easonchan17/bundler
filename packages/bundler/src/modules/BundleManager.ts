@@ -104,7 +104,7 @@ export class BundleManager {
         // maxFeePerGas: maxFeePerGas
       })
       tx.chainId = this.provider._network.chainId
-      console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps', tx)
+      console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps')
       const signedTx = await this.signer.signTransaction(tx)
       console.log('#BundleManager sendBundle - sign tx')
       let ret: string
