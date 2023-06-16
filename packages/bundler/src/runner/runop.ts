@@ -127,6 +127,20 @@ class Runner {
   }
 }
 
+function waitForInput( message:string ) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+
+  return new Promise<string>((resolve) => {
+    rl.question(message, (input) => {
+      rl.close()
+      resolve(input)
+    })
+  })
+}
+
 async function main (): Promise<void> {
   const program = new Command()
     .version(erc4337RuntimeVersion)
@@ -187,7 +201,16 @@ async function main (): Promise<void> {
   const signerBal = await getBalance(await signer.getAddress())
   console.log( '#Runner: signer balance is ', signerBal )
 
-  const accountOwner = new Wallet('0x'.padEnd(66, '7'))
+  // accountOwner is used to sign userOp
+  // const accountOwner = new Wallet('0x'.padEnd(66, '7'))
+
+  let privKey = await waitForInput("Enter the private key of the Account Owner, Otherwise, simply pressing the Enter key will use the default test private key:" )
+  if ( privKey == null || privKey.length != 66 ) {
+    privKey = '0x'.padEnd(66, '7')
+  }
+  console.log('Your private key is:', privKey)
+  const accountOwner = new Wallet(privKey)
+
   const index = opts.nonce ?? Date.now()
   console.log('#using account index=', index, 'accountOwner address=', await accountOwner.getAddress(), 'signer address=', await signer.getAddress())
   const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index).init(deployFactory ? signer : undefined)
