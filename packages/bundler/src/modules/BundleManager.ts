@@ -61,6 +61,7 @@ export class BundleManager {
         const beneficiary = await this._selectBeneficiary()
         const ret = await this.sendBundle(bundle, beneficiary, storageMap)
         debug(`sendNextBundle exit - after sent a bundle of ${bundle.length} `)
+        console.log( '#BundleManager: sendBundle ret', ret )
         return ret
       }
     })
@@ -81,30 +82,43 @@ export class BundleManager {
       const minGasPrice = await this.provider.getGasPrice()
 
       // TODO ??? need review
+      let txType = 0
       let maxFeePerGas: BigNumber = BigNumber.from(0)
       let maxPriorityFeePerGas: BigNumber = BigNumber.from(0)
       if ( feeData.maxFeePerGas != null ) {
         maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+        txType = 2
       } else {
         maxFeePerGas = minGasPrice
       }
 
       if ( feeData.maxPriorityFeePerGas != null ) {
         maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+        txType = 2
       } else {
         maxPriorityFeePerGas = minGasPrice
       }
 
-      const tx = await this.entryPoint.populateTransaction.handleOps(userOps, beneficiary, {
-        type: 0,
-        nonce: await this.signer.getTransactionCount(),
-        gasLimit: 10e6,
-        gasPrice: minGasPrice.lt(maxPriorityFeePerGas) ? maxPriorityFeePerGas : minGasPrice
-        // maxPriorityFeePerGas: maxPriorityFeePerGas,
-        // maxFeePerGas: maxFeePerGas
-      })
+      let tx
+      if ( txType == 2 ) {
+        tx = await this.entryPoint.populateTransaction.handleOps(userOps, beneficiary, {
+          type: txType,
+          nonce: await this.signer.getTransactionCount(),
+          gasLimit: 10e6,
+          maxPriorityFeePerGas: maxPriorityFeePerGas,
+          maxFeePerGas: maxFeePerGas
+          
+        })
+      } else {
+        tx = await this.entryPoint.populateTransaction.handleOps(userOps, beneficiary, {
+          type: txType,
+          nonce: await this.signer.getTransactionCount(),
+          gasLimit: 10e6,
+          gasPrice: minGasPrice
+        })
+      }
       tx.chainId = this.provider._network.chainId
-      console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps')
+      console.log('#BundleManager sendBundle - create tx to call entryPoint.handleOps, tx type', txType)
       const signedTx = await this.signer.signTransaction(tx)
       console.log('#BundleManager sendBundle - sign tx')
       let ret: string
@@ -117,7 +131,7 @@ export class BundleManager {
       } else {
         // ret = await this.signer.sendTransaction(tx)
         ret = await this.provider.send('eth_sendRawTransaction', [signedTx])
-        console.log('#BundleManager sendBundle - send signed tx, tx hash=', ret)
+        // console.log('#BundleManager sendBundle - send signed tx, tx hash=', ret)
         debug('eth_sendRawTransaction ret=', ret)
       }
       // TODO: parse ret, and revert if needed.
@@ -125,7 +139,7 @@ export class BundleManager {
       debug('sent handleOps with', userOps.length, 'ops. removing from mempool')
       // hashes are needed for debug rpc only.
       const hashes = await this.getUserOpHashes(userOps)
-      console.log('#BundleManager sendBundle - finish send signed tx and get hash of userOps', hashes)
+      // console.log('#BundleManager sendBundle - finish send signed tx and get hash of userOps', hashes)
       return {
         transactionHash: ret,
         userOpHashes: hashes

@@ -25,11 +25,20 @@ const ENTRY_POINT = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
 const DeterministicDeploymentProxy = {
   "gasPrice": 100000000000,
   "gasLimit": 100000,
-  "signerAddress": "b7257e293ff8982d7b760497fbdaf5fbca490cbd",
-  "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dea08de66477037a290d361927b2fe0237a46288dc09ec63032d8ea18e3fc3a62032a00998fef1a6856cc634307b7cdbe9953ccd66cf901cc169f62914e030eb35c8ed",
-  "address": "eaacc182e826f7fa9cf25fd2325056d3dfdce69c",
+  "signerAddress": "4c3f2fb71d114824115b44d6c60093167963eb8b",
+  "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dea07f9f8732ccf15277c33a3b4d8553d7ffea29f3615095ba4cc83399da1a5a64dfa07e3d2d32cdbd90b18c7d22918a73d33d88387ca833b63fd5974413afa4a52176",
+  "address": "367888abd495445fa37db7e94d3c55323ee835c9",
   "chainId": 1117
 }
+
+// const DeterministicDeploymentProxy = { // EIP1559链
+//   "gasPrice": 100000000000,
+//   "gasLimit": 100000,
+//   "signerAddress": "01c55e6957e54f61928991460bec55a86bf9854e",
+//   "transaction": "f8a78085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf38208dda09c5aa2144cdb410cf0f2b22fadcc68b5bb1c406bbe32902b9a4c269e4725eb8aa0376701297c2586ae9b0303c0ccc7ccf09e8945bb1816d41fdbcdcbca8e00b197",
+//   "address": "8704101c9e985507b0881602cfc65c26fb85ef6e",
+//   "chainId": 1117
+// }
 
 class Runner {
   bundlerProvider!: HttpRpcClient
@@ -167,9 +176,11 @@ async function main (): Promise<void> {
     const bal = await provider.getBalance(account)
     if (bal.lt(parseEther('1')) && signerBalance.gte(parseEther('10000'))) {
       console.log('funding hardhat account', account)
+
       await signer.sendTransaction({
         to: account,
-        value: parseEther('1').sub(bal)
+        value: parseEther('1').sub(bal),
+        type: 0
       })
     }
 
@@ -234,9 +245,11 @@ async function main (): Promise<void> {
   console.log('#Runner: requiredBalance is', requiredBalance)
   if (bal.lt(requiredBalance.div(2))) {
     console.log('funding account to', requiredBalance.toString())
+
     await signer.sendTransaction({
       to: addr,
-      value: requiredBalance.sub(bal)
+      value: requiredBalance.sub(bal),
+      type: 0
     }).then(async tx => await tx.wait())
   } else {
     console.log('not funding account. balance is enough')

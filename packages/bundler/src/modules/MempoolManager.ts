@@ -48,21 +48,21 @@ export class MempoolManager {
 
     const index = this._findBySenderNonce(userOp.sender, userOp.nonce)
     if (index !== -1) {
-      console.log('#MempoolManager: addUserOp - userOp is exists', {
-        sender:userOp.sender,
-        nonce:userOp.nonce
-      })
+      // console.log('#MempoolManager: addUserOp - userOp is exists', {
+      //   sender:userOp.sender,
+      //   nonce:userOp.nonce
+      // })
       const oldEntry = this.mempool[index]
       this.checkReplaceUserOp(oldEntry, entry)
       debug('replace userOp', userOp.sender, userOp.nonce)
       this.mempool[index] = entry
-      console.log('#MempoolManager: addUserOp - replace userOp in mempool', userOp)
+      // console.log('#MempoolManager: addUserOp - replace userOp in mempool', userOp)
     } else {
-      debug('add userOp', userOp.sender, userOp.nonce)
+      // debug('add userOp', userOp.sender, userOp.nonce)
       this.entryCount[userOp.sender] = (this.entryCount[userOp.sender] ?? 0) + 1
       this.checkSenderCountInMempool(userOp, senderInfo)
       this.mempool.push(entry)
-      console.log('#MempoolManager: addUserOp - add userOp to mempool', userOp.signature)
+      // console.log('#MempoolManager: addUserOp - add userOp to mempool', userOp.signature)
     }
     const timestamp: number = new Date().getTime()
     console.log('#MempoolManager: addUserOp, timestamp=', timestamp, 'mempool length=', this.mempool.length, 'nonce=', userOp.nonce, 'userOpHash=', userOpHash)

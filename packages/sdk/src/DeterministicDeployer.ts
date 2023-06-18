@@ -109,10 +109,11 @@ export class DeterministicDeployer {
     const saltEncoded = hexZeroPad(hexlify(salt), 32)
     const ctrEncoded = DeterministicDeployer.getCtrCode(ctrCode, params)
     return {
-      to: DeterministicDeployer.proxyAddress,
-      data: hexConcat([
-        saltEncoded,
-        ctrEncoded])
+        to: DeterministicDeployer.proxyAddress,
+        data: hexConcat([
+          saltEncoded,
+          ctrEncoded]),
+        type: 0
     }
   }
 
@@ -146,10 +147,39 @@ export class DeterministicDeployer {
     const addr = DeterministicDeployer.getDeterministicDeployAddress(ctrCode, salt, params)
     if (!await this.isContractDeployed(addr)) {
       const signer = this.signer ?? this.provider.getSigner()
+      console.log('#DeterministicDeployer: deterministicDeploy signer', await signer.getAddress())
       await signer.sendTransaction(
         await this.getDeployTransaction(ctrCode, salt, params))
     }
     return addr
+  }
+
+  async getDefaultGasData() : Promise<any>{
+    const feeData = await this.provider.getFeeData()
+    const minGasPrice = await this.provider.getGasPrice()
+
+    let txType = 0
+    let maxFeePerGas: BigNumber = BigNumber.from(0)
+    let maxPriorityFeePerGas: BigNumber = BigNumber.from(0)
+    if ( feeData.maxFeePerGas != null ) {
+      maxFeePerGas = feeData.maxFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxFeePerGas
+      txType = 2
+    } else {
+      maxFeePerGas = minGasPrice
+    }
+    if ( feeData.maxPriorityFeePerGas != null ) {
+        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas.lt( minGasPrice ) ? minGasPrice : feeData.maxPriorityFeePerGas
+        txType = 2
+    }else {
+      maxPriorityFeePerGas = minGasPrice
+    }
+
+    return {
+      type: txType,
+      gasPrice: minGasPrice,
+      maxFeePerGas : maxFeePerGas,
+      maxPriorityFeePerGas: maxPriorityFeePerGas
+    }
   }
 
   private static _instance?: DeterministicDeployer

@@ -204,7 +204,7 @@ export class ValidationManager {
       res = await this._callSimulateValidation(userOp)
     }
 
-    console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data ...')
+    // console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data ...')
     requireCond(!res.returnInfo.sigFailed,
       'Invalid UserOp signature or paymaster signature',
       ValidationErrors.InvalidSignature)
@@ -221,7 +221,7 @@ export class ValidationManager {
       'Currently not supporting aggregator',
       ValidationErrors.UnsupportedSignatureAggregator)
 
-    console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data passed')
+    // console.log('#ValidationManager: validateUserOp - check _callSimulateValidation returned data passed')
     return {
       ...res,
       referencedContracts: codeHashes,
